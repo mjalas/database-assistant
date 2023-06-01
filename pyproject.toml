@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "database-assistant"
+version = "0.1.0"
+description = "Utility for aiding work done with databases"
+authors = ["Mats Jalas <mats.jalas@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "database_assistant"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pynamodb = "^5.5.0"
+typer = {extras = ["all"], version = "^0.9.0"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
