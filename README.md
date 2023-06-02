@@ -1,6 +1,12 @@
 # Data Importer
 
-## Utility AWS commands
+_Very early development..._
+
+This is CLI application consisting of utility commands to help with database related tasks.
+
+Current focus is on DynamoDB related commands.
+
+## Useful AWS commands
 
 Export DynamoDB table data to CSV (remember to change table name):
 
