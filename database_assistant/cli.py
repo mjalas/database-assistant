@@ -1,19 +1,9 @@
 import typer
 
-from database_assistant.dynamodb.commands import (
-    import_csv,
-    list_tables,
-    get_data,
-    delete_table,
-    import_from_cloud_to_local,
-)
+from database_assistant.dynamodb import app as dynamodb_app
 
 app = typer.Typer()
-app.command()(import_csv)
-app.command()(list_tables)
-app.command()(get_data)
-app.command()(delete_table)
-app.command()(import_from_cloud_to_local)
+app.add_typer(dynamodb_app, name="dynamodb")
 
 
 def main():
