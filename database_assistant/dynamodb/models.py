@@ -21,7 +21,7 @@ attribute_type_conversion = {
 }
 
 
-def create_model_from_data(obj: dict, table_name: str, host: str, region: str):
+def create_pynamodb_model_from_data(obj: dict, table_name: str, host: str, region: str):
     base_object = obj
 
     def make_attributes(obj: dict) -> dict:
