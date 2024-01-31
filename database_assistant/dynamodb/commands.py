@@ -62,6 +62,30 @@ def list_tables(
         print("Could not find any tables")
 
 
+def get_local_data(
+    table_name: Annotated[
+        str, typer.Argument(help="Name of the DynamoDB table to get data from.")
+    ],
+    host: Annotated[
+        str,
+        typer.Argument(
+            envvar="DB_HOST", help="Host URL, e.g. when connecting to local database."
+        ),
+    ],
+    region: Annotated[str, typer.Argument(envvar="DB_REGION")],
+    to_file: Annotated[
+        str, typer.Option(help="File path where to store the result.")
+    ] = None,
+):
+    ddb = boto3.client("dynamodb", endpoint_url=host, region_name=region)
+    data = ddb.scan(TableName=table_name)
+    if to_file:
+        with open(to_file, "w") as dest:
+            json.dump(data, dest, indent=4, sort_keys=False)
+    else:
+        print(data)
+
+
 def get_data(
     table_name: Annotated[
         str, typer.Argument(help="Name of the DynamoDB table to get data from.")
@@ -122,8 +146,21 @@ def import_from_cloud_to_local(
             envvar="AWS_PROFILE", help="SSO profile for connecting to AWS DynamoDB"
         ),
     ] = None,
+    local_table_name: Annotated[
+        str,
+        typer.Option(
+            help="Specify local table name, otherwise cloud table name will be used."
+        ),
+    ] = None,
+    write_to_local: Annotated[
+        bool,
+        typer.Option(help="Set flag to write to local database."),
+    ] = False,
 ):
     """Import data from DynamoDB table in the cloud to a local instance."""
+
+    if not local_table_name:
+        local_table_name = table_name
 
     print("Creating clients...", end="")
     local_client = boto3.client("dynamodb", endpoint_url=local_host, region_name=region)
@@ -132,34 +169,47 @@ def import_from_cloud_to_local(
     print(" Done")
     print("Checking if local table exists...", end="")
     response = local_client.list_tables()
-    if table_name not in response["TableNames"]:
+    if write_to_local and table_name not in response["TableNames"]:
         print(" No existing table")
-        print("Creating new table...", end="")
+        print(f"Fetching description for {table_name}...", end="")
         table_description = cloud_client.describe_table(TableName=table_name)["Table"]
+        print(" Done")
         provisioned_throughput = table_description["ProvisionedThroughput"]
         if "NumberOfDecreasesToday" in provisioned_throughput:
             provisioned_throughput.pop("NumberOfDecreasesToday")
+        print(f"Creating new table {local_table_name}...", end="")
         response = local_client.create_table(
             AttributeDefinitions=table_description["AttributeDefinitions"],
-            TableName=table_description["TableName"],
+            TableName=local_table_name,
             KeySchema=table_description["KeySchema"],
             ProvisionedThroughput=provisioned_throughput,
         )
         print(" Done")
     else:
-        print(" Existed, using existing table")
+        if not write_to_local:
+            print("Write flag not set")
+        else:
+            print(" Existed, using existing table")
 
-    print("Fetching data from cloud table...", end="")
+    print(f"Fetching data from cloud table {table_name}...", end="")
     data_items = cloud_client.scan(TableName=table_name)["Items"]
     print(" Done")
+    if not write_to_local:
+        print("Fetched data")
+        print(data_items)
 
     total_item_count = len(data_items)
     print(f"Items fetched {total_item_count}")
-    for i in track(
-        range(total_item_count), description="Importing data to local table..."
-    ):
-        local_client.put_item(TableName=table_name, Item=data_items[i])
-    print(" Done")
+    if write_to_local:
+        for i in track(
+            range(total_item_count),
+            description=f"Importing data to local table {local_table_name}...",
+        ):
+            local_client.put_item(
+                TableName=local_table_name,
+                Item=data_items[i],
+            )
+        print(" Done")
 
 
 def delete_table(
