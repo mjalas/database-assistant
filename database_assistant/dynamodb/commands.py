@@ -1,5 +1,7 @@
+from decimal import Decimal
 from typing import Annotated
 import boto3
+from boto3.dynamodb.conditions import Key, Attr
 import json
 from rich import print
 from rich.progress import track
@@ -84,6 +86,41 @@ def get_local_data(
             json.dump(data, dest, indent=4, sort_keys=False)
     else:
         print(data)
+
+
+def decimal_default(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError
+
+
+def scan_local(
+    table_name: Annotated[
+        str, typer.Argument(help="Name of the DynamoDB table to get data from.")
+    ],
+    attribute: Annotated[str, typer.Argument(help="Key in table")],
+    value: Annotated[str, typer.Argument(help="Value to match against")],
+    host: Annotated[
+        str,
+        typer.Argument(
+            envvar="DB_HOST", help="Host URL, e.g. when connecting to local database."
+        ),
+    ],
+    to_file: Annotated[
+        str, typer.Option(help="File path where to store the result.")
+    ] = None,
+):
+    dynamodb = boto3.resource("dynamodb", endpoint_url=host)
+    table = dynamodb.Table(table_name)
+    response = table.scan(FilterExpression=Attr(attribute).contains(value))
+    items = response["Items"]
+    if to_file:
+        with open(to_file, "w") as dest:
+            json.dump(items, dest, default=decimal_default)
+    else:
+        print(items)
+
+    print(f"Count: {response['Count']}")
 
 
 def get_data(

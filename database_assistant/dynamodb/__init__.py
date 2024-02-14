@@ -5,6 +5,7 @@ from database_assistant.dynamodb.commands import (
     get_local_data,
     delete_table,
     import_from_cloud_to_local,
+    scan_local,
 )
 from database_assistant.utils import typerInstance
 
@@ -13,6 +14,7 @@ local.command()(delete_table)
 local.command()(list_tables)
 local.command(name="get-data")(get_local_data)
 local.command()(import_csv)
+local.command(name="scan")(scan_local)
 
 
 app = typerInstance()
